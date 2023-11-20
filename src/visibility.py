@@ -1,20 +1,47 @@
 
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, NewType
+import random
+import math
 
-def get_gsp(gs):
-    pass
+GSPair = NewType('GSPair', Tuple[int, int])
 
 
-def get_visibility(
-    sat: List[int], 
-    gs: List[int], 
-    gsp: List[Tuple[int]]) -> Dict[int, Tuple[int]]:
-    pass
+def get_gsp(gs: List[int], num: int) -> List[GSPair]:
+    """
+    generate groud station pairs
+    """
+
+    gsp = []
+    # all possible pairs
+    for i in range(0, len(gs)):
+        for j in range(i + 1, len(gs)):
+            gsp.append((gs[i], gs[j]))
+    # randomly select num pairs
+    gsp = random.sample(gsp, num)
+    
+    return gsp
+
+
+def get_visibility(sat: List[int], gsp: List[GSPair]) \
+    -> Dict[int, GSPair]:
+    
+    visibility = {}
+    for s in sat:
+        visible_num = random.randint(0, len(gsp) // 3)
+        visible_gs = random.sample(gsp, visible_num)
+        visibility[s] = visible_gs
+
+    return visibility
 
 
 
 if __name__ == "__main__":
-    sat = list(range(0, 5))
-    gs = list(range(0, 10))
-    gsp = [(0, 1), (1, 2), (1, 3)]
-    get_visibility(sat, gs, gsp)
+    SAT_NUM = 5
+    GS_NUM = 10
+    GSP_NUM = GS_NUM * (GS_NUM - 1) // 2
+    sat = list(range(0, SAT_NUM))
+    gs = list(range(0, GS_NUM))
+    gsp = get_gsp(gs, GSP_NUM)
+
+    visibility = get_visibility(sat, gsp)
+    print(visibility)
