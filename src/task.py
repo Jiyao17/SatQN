@@ -5,6 +5,8 @@ import random
 from visibility import get_gsp, get_visibility, GSPair
 from gurobipy import Model, GRB, quicksum
 
+from networkx import DiGraph
+
 
 class SatAssign:
     def __init__(self,
@@ -131,6 +133,38 @@ class SatEntDist:
         self.Fth = Fth
         self.w = weight
 
+        self.params: Tuple = None
+        self.model: Model = None
+        self.graph_built = False
+
+    def set_params(self, 
+        L: List[int],
+        R: List[int],
+        T: List[int],
+        Fth: Dict[Tuple[int, GSPair], float],
+        GM: List[int],
+        SM: List[int],
+        ):
+        self.params = (L, R, T, Fth, GM, SM)
+
+
+class SatEntDistGurobi(SatEntDist):
+    def __init__(self,
+        sat: List[int],
+        gs: List[int],
+        gsp: List[GSPair], 
+        fidelity: Dict[Tuple[int, List[GSPair]], float],
+        Fth: Dict[Tuple[int, GSPair], float],
+        weight: Dict[Tuple[int, GSPair], float],
+        ) -> None:
+
+        super().__init__(sat, gs, gsp, fidelity, Fth, weight)
+                 
+    def formulate(self, ):
+        """
+        formulate the problem
+        """
+        assert self.params is not None
         self.model = Model('SA')
         # add decision variables
         # x[sat][gsp] = 1 if sat is assigned to gsp
@@ -148,7 +182,9 @@ class SatEntDist:
                     )
         
         assert len(self.w) == len(self.F) == len(self.x) == len(self.y)
-   
+
+        self.add_constrs(*self.params)
+
     def solve(self, ):        
         obj = 0
         for s in self.S:
@@ -175,7 +211,6 @@ class SatEntDist:
         self.add_constr_2d(Fth)
         self.add_constr_2e(GM)
         self.add_constr_2f(SM)
-
 
     def add_constr_2a(self, L: List[int]):
         """
@@ -269,6 +304,19 @@ class SatEntDist:
                 self.model.addConstr(self.y[s, p] >= 0)
                 self.model.addConstr(self.y[s, p] <= SM[i])
 
+
+class SatEntDistFlow(SatEntDist):
+    def __init__(self, sat: List[int], gs: List[int], gsp: List[GSPair], fidelity: Dict[Tuple[int, List[GSPair]], float], Fth: Dict[Tuple[int, GSPair], float], weight: Dict[Tuple[int, GSPair], float]) -> None:
+        super().__init__(sat, gs, gsp, fidelity, Fth, weight)
+
+    def build_graph(self, ):
+        """
+        build the graph for flow formulation
+        """
+        self.graph = {}
+        self.graph_built = True
+
+
 def test_sa():
     random.seed(2)
     SAT_NUM = 20
@@ -351,8 +399,9 @@ def test_sed():
     for p in gsp:
         Fth[p] = 0.9
 
-    sa = SatEntDist(sat, gs, gsp, fideliy, Fth, weight)
-    sa.add_constrs(L, R, T, Fth, GM, SM)
+    sa = SatEntDistGurobi(sat, gs, gsp, fideliy, Fth, weight)
+    sa.set_params(L, R, T, Fth, GM, SM)
+    sa.formulate()
     sa.solve()
 
 
