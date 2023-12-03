@@ -27,7 +27,7 @@ def get_visibility(sat: List[int], gsp: List[GSPair]) \
     
     visibility = {}
     for s in sat:
-        visible_num = random.randint(0, len(gsp) // 3)
+        visible_num = random.randint(0, len(gsp) // 2)
         visible_gs = random.sample(gsp, visible_num)
         visibility[s] = visible_gs
 

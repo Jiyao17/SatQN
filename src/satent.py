@@ -145,9 +145,9 @@ class SatAssignILP(SatAssign):
         for s in self.S:
             for p in self.P:
                 # when p is visible to s
-                if self.F[s, p] > 0:
+                if self.F[s, p] < Fth[p]:
                     self.model.addConstr(
-                        self.F[s, p] >= self.x[s, p] * Fth[p]
+                        self.x[s, p] == 0
                     )
 
 
@@ -239,13 +239,21 @@ def test_sa(sat, gs, gsp, fideliy, weight, L, R, T, Fth):
     sa.add_constrs()
     sa.solve()
 
+
+    result = {}
+    for s in sat:
+        for p in gsp:
+            if sa.x[s, p].x > 0:
+                result[(s, p)] = float(sa.x[s, p].x)
+
+    return result
+
 def test_mf(sat, gs, gsp, fideliy, weight, L, R, T, Fth):
     mf = SatAssignMF(sat, gs, gsp, fideliy, weight)
     mf.set_params(L, R, T, Fth)
     mf.build_graph()
     flow_value, flow_dict = mf.solve()
 
-    print(flow_value)
     # save graph with flow
     pos = nx.multipartite_layout(mf.graph, subset_key='subset', align='vertical')
     nx.draw(mf.graph, pos=pos, with_labels=True)
@@ -257,6 +265,8 @@ def test_mf(sat, gs, gsp, fideliy, weight, L, R, T, Fth):
 
     nx.draw_networkx_edge_labels(mf.graph, pos=pos, edge_labels=edge_labels)
     plt.savefig('flow.png')
+
+    return flow_value, flow_dict
 
 
 def test_example():
@@ -291,13 +301,14 @@ def test_example():
     }
 
     test_sa(sat, gs, gsp, fideliy, weight, L, R, T, Fth)
-    test_mf(sat, gs, gsp, fideliy, weight, L, R, T, Fth)
+    f, d = test_mf(sat, gs, gsp, fideliy, weight, L, R, T, Fth)
+    print(f)
 
 def test_rand():
-    random.seed(2)
+    random.seed(0)
     SAT_NUM = 3
-    GS_NUM = 3
-    GSP_NUM = 2
+    GS_NUM = 5
+    GSP_NUM = 5
     sat = list(range(0, SAT_NUM))
     gs = list(range(0, GS_NUM))
     gsp = get_gsp(gs, GSP_NUM)
@@ -321,20 +332,25 @@ def test_rand():
             else:
                 weight[s, p] = 0
 
-    L = [3] * len(gsp)
+    L = random.choices(range(1, 4), k=len(gsp))
     # randomly assign L[j] = 1 for 1/10 of gsp
     # for i in random.sample(range(0, len(gsp)), len(gsp) // 10):
     #     L[i] = 1
-    R = [5] * len(gs)
-    T = [5] * len(sat)
+    R = [10] * len(gs)
+    T = [10] * len(sat)
     Fth = {}
     for p in gsp:
         Fth[p] = 0.8
 
+    result = test_sa(sat, gs, gsp, fideliy, weight, L, R, T, Fth)
+    print(result)
 
-    test_sa(sat, gs, gsp, fideliy, weight, L, R, T, Fth)
-    test_mf(sat, gs, gsp, fideliy, weight, L, R, T, Fth)
-
+    flow_value, flow_dict = test_mf(sat, gs, gsp, fideliy, weight, L, R, T, Fth)
+    print(flow_value)
+    
+    # print(visibility)
+    # print(gsp)
+    # print(L)
 
 if __name__ == '__main__':
     # test_example()
